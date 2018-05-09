@@ -32,54 +32,76 @@ class Crawler(object, metaclass=ProxyMetaclass):
     #         for url in urls:
     #             yield url
           
-    def crawl_daili66(self, page_count=4):
-        """
-        获取代理66
-        :param page_count: 页码
-        :return: 代理
-        """
-        start_url = 'http://www.66ip.cn/{}.html'
-        urls = [start_url.format(page) for page in range(1, page_count + 1)]
-        for url in urls:
-            print('Crawling', url)
-            html = get_page(url)
-            if html:
-                doc = pq(html)
-                trs = doc('.containerbox table tr:gt(0)').items()
-                for tr in trs:
-                    ip = tr.find('td:nth-child(1)').text()
-                    port = tr.find('td:nth-child(2)').text()
-                    yield ':'.join([ip, port])
+    # def crawl_daili66(self, page_count=4):
+    #     """
+    #     获取代理66
+    #     :param page_count: 页码
+    #     :return: 代理
+    #     """
+    #     start_url = 'http://www.66ip.cn/{}.html'
+    #     urls = [start_url.format(page) for page in range(1, page_count + 1)]
+    #     for url in urls:
+    #         print('Crawling', url)
+    #         html = get_page(url)
+    #         if html:
+    #             doc = pq(html)
+    #             trs = doc('.containerbox table tr:gt(0)').items()
+    #             for tr in trs:
+    #                 ip = tr.find('td:nth-child(1)').text()
+    #                 port = tr.find('td:nth-child(2)').text()
+    #                 yield ':'.join([ip, port])
+    #
+    # def crawl_proxy360(self):
+    #     """
+    #     获取Proxy360
+    #     :return: 代理
+    #     """
+    #     start_url = 'http://www.proxy360.cn/Region/China'
+    #     print('Crawling', start_url)
+    #     html = get_page(start_url)
+    #     if html:
+    #         doc = pq(html)
+    #         lines = doc('div[name="list_proxy_ip"]').items()
+    #         for line in lines:
+    #             ip = line.find('.tbBottomLine:nth-child(1)').text()
+    #             port = line.find('.tbBottomLine:nth-child(2)').text()
+    #             yield ':'.join([ip, port])
 
-    def crawl_proxy360(self):
-        """
-        获取Proxy360
-        :return: 代理
-        """
-        start_url = 'http://www.proxy360.cn/Region/China'
-        print('Crawling', start_url)
+
+    def crawl_freeproxylist(self):
+        start_url = 'https://free-proxy-list.net/'
         html = get_page(start_url)
         if html:
             doc = pq(html)
-            lines = doc('div[name="list_proxy_ip"]').items()
-            for line in lines:
-                ip = line.find('.tbBottomLine:nth-child(1)').text()
-                port = line.find('.tbBottomLine:nth-child(2)').text()
-                yield ':'.join([ip, port])
+            ips_table = str(doc('table#proxylisttable'))
+            ip_pattern = re.compile('<td>(\d+\.\d+\.\d+\.\d+)</td>', re.S)
+            port_pattern = re.compile('<td>(\d+)</td>', re.S)
+            ips = re.findall(ip_pattern, ips_table)
+            ports = re.findall(port_pattern, ips_table)
+            for ip, port in zip(ips, ports):
+                yield ip + ':' + port
 
     def crawl_goubanjia(self):
         """
         获取Goubanjia
         :return: 代理
         """
-        start_url = 'http://www.goubanjia.com/free/gngn/index.shtml'
+        start_url = 'http://www.goubanjia.com/'
         html = get_page(start_url)
         if html:
             doc = pq(html)
             tds = doc('td.ip').items()
-            for td in tds:
-                td.find('p').remove()
-                yield td.text().replace(' ', '')
+            ip_pattern = re.compile('.*?(?:<span>(.*?)</span>|inline-block;">(.*?)</).*?', re.S)
+            port_pattern = re.compile('port.*?>(.*?)</')
+            for ip in tds:
+                ip_visible = re.findall(ip_pattern, str(ip))
+                port = re.findall(port_pattern, str(ip))
+                new_ip = ""
+                for parts in ip_visible:
+                    for part in parts:
+                        new_ip += part
+                new_ip += (":" + port[0])
+                yield new_ip
 
     def crawl_ip181(self):
         start_url = 'http://www.ip181.com/'
@@ -104,16 +126,16 @@ class Crawler(object, metaclass=ProxyMetaclass):
                 yield result.replace(' ', '')
 
 
-    def crawl_kxdaili(self):
-        for i in range(1, 11):
-            start_url = 'http://www.kxdaili.com/ipList/{}.html#ip'.format(i)
-            html = get_page(start_url)
-            ip_address = re.compile('<tr.*?>\s*<td>(.*?)</td>\s*<td>(.*?)</td>')
-            # \s* 匹配空格，起到换行作用
-            re_ip_address = ip_address.findall(html)
-            for address, port in re_ip_address:
-                result = address + ':' + port
-                yield result.replace(' ', '')
+    # def crawl_kxdaili(self):
+    #     for i in range(1, 11):
+    #         start_url = 'http://www.kxdaili.com/ipList/{}.html#ip'.format(i)
+    #         html = get_page(start_url)
+    #         ip_address = re.compile('<tr.*?>\s*<td>(.*?)</td>\s*<td>(.*?)</td>')
+    #         # \s* 匹配空格，起到换行作用
+    #         re_ip_address = ip_address.findall(html)
+    #         for address, port in re_ip_address:
+    #             result = address + ':' + port
+    #             yield result.replace(' ', '')
 
 
     def crawl_premproxy(self):
@@ -175,21 +197,21 @@ class Crawler(object, metaclass=ProxyMetaclass):
                         address_port = address+':'+port
                         yield address_port.replace(' ','')
     
-    def crawl_ip3366(self):
-        for i in range(1, 4):
-            start_url = 'http://www.ip3366.net/?stype=1&page={}'.format(i)
-            html = get_page(start_url)
-            if html:
-                find_tr = re.compile('<tr>(.*?)</tr>', re.S)
-                trs = find_tr.findall(html)
-                for s in range(1, len(trs)):
-                    find_ip = re.compile('<td>(\d+\.\d+\.\d+\.\d+)</td>')
-                    re_ip_address = find_ip.findall(trs[s])
-                    find_port = re.compile('<td>(\d+)</td>')
-                    re_port = find_port.findall(trs[s])
-                    for address,port in zip(re_ip_address, re_port):
-                        address_port = address+':'+port
-                        yield address_port.replace(' ','')
+    # def crawl_ip3366(self):
+    #     for i in range(1, 4):
+    #         start_url = 'http://www.ip3366.net/?stype=1&page={}'.format(i)
+    #         html = get_page(start_url)
+    #         if html:
+    #             find_tr = re.compile('<tr>(.*?)</tr>', re.S)
+    #             trs = find_tr.findall(html)
+    #             for s in range(1, len(trs)):
+    #                 find_ip = re.compile('<td>(\d+\.\d+\.\d+\.\d+)</td>')
+    #                 re_ip_address = find_ip.findall(trs[s])
+    #                 find_port = re.compile('<td>(\d+)</td>')
+    #                 re_port = find_port.findall(trs[s])
+    #                 for address,port in zip(re_ip_address, re_port):
+    #                     address_port = address+':'+port
+    #                     yield address_port.replace(' ','')
     
     def crawl_iphai(self):
         start_url = 'http://www.iphai.com/'
